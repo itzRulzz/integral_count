@@ -1,9 +1,9 @@
-import tkinter as tk
-import matplotlib.pyplot as plt
-import numpy as np
-from tkinter import messagebox
-from singleton import SingletonClass
-import sympy as sp
+import tkinter as tk # GUI
+import matplotlib.pyplot as plt # График.
+import numpy as np # Математика для графика.
+from tkinter import messagebox # Вывод ошибок.
+from singleton import SingletonClass # Паттерн для создания лишь одного главного окна.
+import ast # Для проверки корректности функции.
 
 
 class MainWindow(SingletonClass): # Класс наследует поведение Singleton, чтобы был лишь один экземпляр главного окна.
@@ -82,8 +82,8 @@ class MainWindow(SingletonClass): # Класс наследует поведен
             a = entry2.get()
             b = entry3.get()
             N = entry4.get()
-            if UserInput().user_input(a, b, N, func):
-                print('success') # !!! Передача дальнейших инструкций.
+            if UserInput().user_input(a, b, N, func, btn1):
+                Plot(a, b, N, func).plot() # Передаем данные на построение графика, если все верно.
 
 
         btn1 = tk.Button(root, text='▶️', # Создаем и настраиваем кнопку запуска вычислений.
@@ -108,20 +108,23 @@ class MainWindow(SingletonClass): # Класс наследует поведен
 class UserInput:
 
     def __init__(self):
+        self.btn1 = None
         self.x = None
         self.y = None
 
-    def user_input(self, a, b, N, func):
+    def user_input(self, a, b, N, func, btn1):
         '''Принимает и проверяет введенные пользователем данные.'''
-        # Преобразовываем функцию в нужный matplotlib вид.
-        # Строим график (но не выводим), проверяем замкнутость области.
-        
+        self.btn1 = btn1
         # Проверка корректности N.
         if not N.isdigit():
             messagebox.showerror("Ошибка", "Количество точек N должно быть целым числом!")
+            self.btn1.config(relief='raised')  # Возвращаем relief в исходное состояние 'raised'
+            self.btn1.config(state='normal')  # Возвращаем state в исходное состояние 'normal'
             return False
         elif int(N) < 100:
             messagebox.showerror("Ошибка", "Минимальное количество точек: 100!")
+            self.btn1.config(relief='raised')
+            self.btn1.config(state='normal')
             return False
 
         # Проверка корректности a, b, N.
@@ -140,27 +143,90 @@ class UserInput:
             
             error_message = f"Значение {' и '.join(variable_names)} должно быть целым числом!"
             messagebox.showerror("Ошибка", error_message)
+            self.btn1.config(relief='raised')
+            self.btn1.config(state='normal')
             return False
         
-        # Проверка корректности func.
-        
+        # Проверка корректности границ.
+        if a >= b:
+            messagebox.showerror("Ошибка", "a должно быть меньше b!")
+            self.btn1.config(relief='raised')
+            self.btn1.config(state='normal')
+            return False
 
-        return True # !!! ОБРАТНО СДЕЛАТЬ КНОПКУ ДОСТУПНОЙ!!!
-        
-        x = np.linspace(-40, 40, 10000)
-        y = MainWindow.func
+        # Проверка корректности func.
+        try:
+            # Удаление "y=" и замена ^ на **
+            func = func.replace("y=", "")
+            func = func.replace('^', '**')
+            ast.parse(func)
+        except SyntaxError:
+            messagebox.showerror("Ошибка", "введена неправильная функция!")
+            self.btn1.config(relief='raised')
+            self.btn1.config(state='normal')
+            return False
+
+        # Проверка замкнутости графика.
+        x = np.linspace(a, b, 100)
+        try:
+            y = eval(func)
+        except NameError:
+            messagebox.showerror("Ошибка", "неправильно задана функция!")
+            self.btn1.config(relief='raised')
+            self.btn1.config(state='normal')
+            return False
+
+        fig, ax = plt.subplots()
+        ax.plot(x, y)
+
+        if plt.fignum_exists(fig.number):
+            plt.close(fig)  # Закрываем временный график
+        else:
+            messagebox.showerror("Ошибка", "область графика не замкнута!")
+            self.btn1.config(relief='raised')
+            self.btn1.config(state='normal')
+            return False
+
+
+        return True
 
 
 class Plot:
 
-    def __init__(self):
-        pass
-
+    def __init__(self, a, b, N, func):
+        self.a = int(a)
+        self.b = int(b)
+        self.N = int(N)
+        self.func = func
 
     def plot(self):
         '''Строит график.'''
-        pass
-
+        self.func = self.func.replace("y=", "")
+        self.func = self.func.replace('^', '**')
+        compiled_func = compile("lambda x: " + self.func, "<string>", "eval")
+        self.func = eval(compiled_func)
+        # Генерация случайных значений x в заданном диапазоне
+        x = np.linspace(self.a, self.b, self.N)
+        
+        # Вычисление значений функции для сгенерированных x
+        y = self.func(x)
+        
+        # Построение графика функции
+        plt.plot(x, y)
+        
+        # Установка границ оси x
+        plt.xlim(self.a, self.b)
+        
+        # Установка границ оси y на основе минимального и максимального значений y
+        plt.ylim(min(y), max(y))
+        
+        # Добавление подписей осей и заголовка
+        plt.xlabel('x')
+        plt.ylabel('y')
+        plt.title('График функции')
+        
+        # Отображение графика
+        plt.show()
 
 class MathCalculations:
 
