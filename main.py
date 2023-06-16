@@ -3,17 +3,20 @@ import matplotlib.pyplot as plt # График.
 import numpy as np # Математика для графика.
 from tkinter import messagebox # Вывод ошибок.
 from singleton import SingletonClass # Паттерн для создания лишь одного главного окна.
-import ast # Для проверки корректности функции.
-
 
 class MainWindow(SingletonClass): # Класс наследует поведение Singleton, чтобы был лишь один экземпляр главного окна.
-
+    '''Хранит все основные переменные в атрибутах объекта.'''
+    
     def __init__(self):
         '''Инициализирует переменные, использующиеся в классе.'''
+
         self.func = None
         self.a = None
         self.b = None
         self.N = None
+        self.btn1 = None
+
+
 
     def main_window(self):
         '''Создает графический интерфейс с вводом всех нужных данных.'''
@@ -34,22 +37,18 @@ class MainWindow(SingletonClass): # Класс наследует поведен
                             font=('Corbel', 20))
         text1.grid(row=0,column=0,stick='w') # Располагаем надпись на экране методом pack.
 
-
         entry1 = tk.Entry(root, bg='#D7D9DB') # Создаем и настраиваем поле ввода.
         entry1.grid(row=1,column=0,stick='nw') # Располагаем надпись на экране методом pack.
-
 
         text2 = tk.Label(root, text='Границы',
                             bg='#EDEDED',
                             font=('Corbel', 20))
         text2.grid(row=2,column=0,stick='w')
 
-
         text3 = tk.Label(root, text='a:',
                             bg='#EDEDED',
                             font=('Corbel', 20))
         text3.grid(row=3,column=0,stick='w')
-
 
         entry2 = tk.Entry(root, bg='#D7D9DB')
         entry2.grid(row=3,column=1,stick='w')
@@ -60,38 +59,36 @@ class MainWindow(SingletonClass): # Класс наследует поведен
                             padx=50)
         text3.grid(row=3,column=2,stick='w')
 
-
         entry3 = tk.Entry(root, bg='#D7D9DB')
         entry3.grid(row=3,column=3,stick='w')
-
 
         text4 = tk.Label(root, text='Кол-во. точек',
                             bg='#EDEDED',
                             font=('Corbel', 20))
         text4.grid(row=4,column=0,stick='w')
 
-
         entry4 = tk.Entry(root, bg='#D7D9DB')
         entry4.grid(row=5,column=0,stick='nw')
 
 
+
         def start(): # Функция, запускающаяся после нажатия на кнопку запуска.
-            btn1.config(relief='sunken') # Делаем кнопку нажатой.
-            btn1.config(state='disabled') # Отключаем возможность нажать кнопку.
-            func = entry1.get() # Сохраняем вводы в глобальные переменные.
-            a = entry2.get()
-            b = entry3.get()
-            N = entry4.get()
-            if UserInput().user_input(a, b, N, func, btn1):
-                Plot(a, b, N, func, btn1).plot() # Передаем данные на построение графика, если все верно.
+            self.btn1.config(relief='sunken') # Делаем кнопку нажатой.
+            self.btn1.config(state='disabled') # Отключаем возможность нажать кнопку.
+            self.func = entry1.get() # Сохраняем вводы пользователя в переменные.
+            self.a = entry2.get()
+            self.b = entry3.get()
+            self.N = entry4.get()
+            if mw.user_input(): # Если все проверки переменных успешны, то ...
+                mw.plot() # Запускаем построение графика.
 
 
-        btn1 = tk.Button(root, text='▶️', # Создаем и настраиваем кнопку запуска вычислений.
+
+        self.btn1 = tk.Button(root, text='▶️', # Создаем и настраиваем кнопку запуска вычислений.
                             command=start,
                             bg='#EDEDED',
                             activebackground='#D7D9DB')
-        btn1.grid(row=6,column=0, stick='w') # Располагаем кнопку на экране.
-
+        self.btn1.grid(row=6,column=0, stick='w') # Располагаем кнопку на экране.
 
         root.grid_columnconfigure(0, minsize=100) # Настраиваем размер сетки в окне.
         root.grid_columnconfigure(1, minsize=10)
@@ -101,26 +98,20 @@ class MainWindow(SingletonClass): # Класс наследует поведен
         root.grid_rowconfigure(3, minsize=30)
         root.grid_rowconfigure(5, minsize=30)
 
-
         root.mainloop() # Вечный цикл, в течении которого окно будет запущено.
 
 
-class UserInput:
 
-    def __init__(self):
-        self.x = None
-        self.y = None
-
-    def user_input(self, a, b, N, func, btn1):
-        '''Принимает и проверяет введенные пользователем данные.'''
-        self.btn1 = btn1
+    def user_input(self):
+        '''Принимает и проверяет введенные пользователем данные и преобразует их в правильные типы.'''
+        
         # Проверка корректности N.
-        if not N.isdigit():
+        if not self.N.isdigit():
             messagebox.showerror("Ошибка", "Количество точек N должно быть целым числом!")
             self.btn1.config(relief='raised')  # Возвращаем relief в исходное состояние 'raised'
             self.btn1.config(state='normal')  # Возвращаем state в исходное состояние 'normal'
             return False
-        elif int(N) < 100:
+        elif int(self.N) < 100:
             messagebox.showerror("Ошибка", "Минимальное количество точек: 100!")
             self.btn1.config(relief='raised')
             self.btn1.config(state='normal')
@@ -129,11 +120,11 @@ class UserInput:
         # Проверка корректности a, b, N.
         variable_names = []  # Инициализируем переменную пустым списком
         try:
-            a = int(a)
-            b = int(b)
-            N = int(N)
+            self.a = int(self.a)
+            self.b = int(self.b)
+            self.N = int(self.N)
         except ValueError as e:
-            variables = {'a': a, 'b': b, 'N': N}
+            variables = {'a': self.a, 'b': self.b, 'N': self.N}
             for var_name, var_value in variables.items():
                 try:
                     int(var_value)
@@ -147,7 +138,7 @@ class UserInput:
             return False
         
         # Проверка корректности границ.
-        if a >= b:
+        if self.a >= self.b:
             messagebox.showerror("Ошибка", "a должно быть меньше b!")
             self.btn1.config(relief='raised')
             self.btn1.config(state='normal')
@@ -156,19 +147,23 @@ class UserInput:
         # Проверка корректности func.
         try:
             # Удаление "y=" и замена ^ на **
-            func = func.replace("y=", "")
-            func = func.replace('^', '**')
-            ast.parse(func)
-        except SyntaxError:
+            self.func = self.func.replace("y=", "")
+            self.func = self.func.replace('^', '**')
+            x = np.array([0])  # Произвольное значение для проверки синтаксиса
+            np.sin(x)
+            np.cos(x)
+            np.exp(x)
+            eval(self.func, {'__builtins__': None}, {'x': x, 'sin': np.sin, 'cos': np.cos, 'exp': np.exp})
+        except (SyntaxError, NameError):
             messagebox.showerror("Ошибка", "введена неправильная функция!")
             self.btn1.config(relief='raised')
             self.btn1.config(state='normal')
             return False
 
         # Проверка замкнутости графика.
-        x = np.linspace(a, b, 100)
+        x = np.linspace(self.a, self.b, 100)
         try:
-            y = eval(func)
+            y = eval(self.func)
         except NameError:
             messagebox.showerror("Ошибка", "неправильно задана функция!")
             self.btn1.config(relief='raised')
@@ -186,23 +181,13 @@ class UserInput:
             self.btn1.config(state='normal')
             return False
 
-
         return True
 
 
-class Plot:
-
-    def __init__(self, a, b, N, func, btn1):
-        self.a = int(a)
-        self.b = int(b)
-        self.N = int(N)
-        self.func = func
-        self.btn1 = btn1
 
     def plot(self):
         '''Строит график.'''
-        self.func = self.func.replace("y=", "")
-        self.func = self.func.replace('^', '**')
+
         compiled_func = compile("lambda x: " + self.func, "<string>", "eval")
         self.func = eval(compiled_func)
 
@@ -230,49 +215,26 @@ class Plot:
         # Отображение графика
         plt.show()
 
-        MathCalculations(self.func, self.a, self.b, self.N)
+        mw.math_calculations()
 
         self.btn1.config(relief='raised')
         self.btn1.config(state='normal')
 
-class MathCalculations:
 
-    def __init__(self):
-        self.func = None
-        self.a = None
-        self.b = None
-        self.N = None
 
-    def monte_carlo_integration(self, func, a, b, N):
+    def math_calculations(self):
         '''Выполняет математические расчеты.'''
-        x = np.random.uniform(a, b, N)  # Generate random sample points
-        y = func(x)  # Evaluate the function at the sample points
-        integral_approximation = np.mean(y) * (b - a)  # Calculate the average function value
-        return integral_approximation
+        
+        dx = (self.b - self.a) / self.N  # Шаг интегрирования
+        x = np.linspace(self.a, self.b, self.N)  # Массив точек x
+        y = self.func(x)  # Значения функции в точках x
 
-    def calculate_integral(self):
-        if not self.func or not self.a or not self.b or not self.N:
-            # Handle case where input is missing
-            return None
+        integral = np.sum(y) * dx  # Площадь под графиком (простая сумма)
+        print(integral)
 
-        compiled_func = compile("lambda x: " + self.func, "<string>", "eval")
-        func = eval(compiled_func)
+        # Визуализация точек и вывод результатов
+        mw.show_results(x, y, integral)
 
-        integral_approximation = self.monte_carlo_integration(func, self.a, self.b, self.N)
-
-        return integral_approximation
-
-integral_approximation = MathCalculations().calculate_integral()
-if integral_approximation is not None:
-    print("The value calculated by Monte Carlo integration is:", integral_approximation)
-else:
-    print("Incomplete input. Please provide all required parameters.")
-
-
-class ShowResults:
-
-    def __init__(self):
-        pass
 
 
     def show_results(self):
@@ -280,6 +242,7 @@ class ShowResults:
         pass
 
 
+
 if __name__ == "__main__":
     mw = MainWindow() # Создаем объект класса MainWindow.
-    mw.main_window() # Вызываем метод на объекте.
+    mw.main_window() # Вызываем метод на объекте, запускаем цепочку остальных функций.
