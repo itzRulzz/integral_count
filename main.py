@@ -83,7 +83,7 @@ class MainWindow(SingletonClass): # Класс наследует поведен
             b = entry3.get()
             N = entry4.get()
             if UserInput().user_input(a, b, N, func, btn1):
-                Plot(a, b, N, func).plot() # Передаем данные на построение графика, если все верно.
+                Plot(a, b, N, func, btn1).plot() # Передаем данные на построение графика, если все верно.
 
 
         btn1 = tk.Button(root, text='▶️', # Создаем и настраиваем кнопку запуска вычислений.
@@ -108,7 +108,6 @@ class MainWindow(SingletonClass): # Класс наследует поведен
 class UserInput:
 
     def __init__(self):
-        self.btn1 = None
         self.x = None
         self.y = None
 
@@ -193,11 +192,12 @@ class UserInput:
 
 class Plot:
 
-    def __init__(self, a, b, N, func):
+    def __init__(self, a, b, N, func, btn1):
         self.a = int(a)
         self.b = int(b)
         self.N = int(N)
         self.func = func
+        self.btn1 = btn1
 
     def plot(self):
         '''Строит график.'''
@@ -205,38 +205,68 @@ class Plot:
         self.func = self.func.replace('^', '**')
         compiled_func = compile("lambda x: " + self.func, "<string>", "eval")
         self.func = eval(compiled_func)
-        # Генерация случайных значений x в заданном диапазоне
-        x = np.linspace(self.a, self.b, self.N)
-        
-        # Вычисление значений функции для сгенерированных x
+
+        x = np.linspace(self.a-10, self.b+10, 100)
         y = self.func(x)
-        
+
+        fig, ax = plt.subplots()
+
         # Построение графика функции
-        plt.plot(x, y)
-        
-        # Установка границ оси x
-        plt.xlim(self.a, self.b)
-        
-        # Установка границ оси y на основе минимального и максимального значений y
-        plt.ylim(min(y), max(y))
-        
+        ax.plot(x, y)
+
+        # Добавление условных границ интегрирования
+        ax.axvline(self.a, color='red', linestyle='dashed')
+        ax.axvline(self.b, color='red', linestyle='dashed')
+
+        # Оси OX и OY
+        ax.axhline(0, color='black', linewidth=0.5)
+        ax.axvline(0, color='black', linewidth=0.5)
+
         # Добавление подписей осей и заголовка
         plt.xlabel('x')
         plt.ylabel('y')
         plt.title('График функции')
-        
+
         # Отображение графика
         plt.show()
+
+        MathCalculations(self.func, self.a, self.b, self.N)
+
+        self.btn1.config(relief='raised')
+        self.btn1.config(state='normal')
 
 class MathCalculations:
 
     def __init__(self):
-        pass
+        self.func = None
+        self.a = None
+        self.b = None
+        self.N = None
 
-
-    def math_calculations(self):
+    def monte_carlo_integration(self, func, a, b, N):
         '''Выполняет математические расчеты.'''
-        pass
+        x = np.random.uniform(a, b, N)  # Generate random sample points
+        y = func(x)  # Evaluate the function at the sample points
+        integral_approximation = np.mean(y) * (b - a)  # Calculate the average function value
+        return integral_approximation
+
+    def calculate_integral(self):
+        if not self.func or not self.a or not self.b or not self.N:
+            # Handle case where input is missing
+            return None
+
+        compiled_func = compile("lambda x: " + self.func, "<string>", "eval")
+        func = eval(compiled_func)
+
+        integral_approximation = self.monte_carlo_integration(func, self.a, self.b, self.N)
+
+        return integral_approximation
+
+integral_approximation = MathCalculations().calculate_integral()
+if integral_approximation is not None:
+    print("The value calculated by Monte Carlo integration is:", integral_approximation)
+else:
+    print("Incomplete input. Please provide all required parameters.")
 
 
 class ShowResults:
