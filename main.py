@@ -10,11 +10,13 @@ class MainWindow(SingletonClass): # Класс наследует поведен
     def __init__(self):
         '''Инициализирует переменные, использующиеся в классе.'''
 
-        self.func = None
-        self.a = None
-        self.b = None
-        self.N = None
-        self.btn1 = None
+        self.func = None # Сама функция.
+        self.a = None # Левая граница интегрирования.
+        self.b = None # Правая граница интегрирования.
+        self.N = None # Количество точек для Монте-Карло.
+        self.btn1 = None # Основная кнопка запуска вычислений
+        self.fig = None #
+        self.ax = None
 
 
 
@@ -105,78 +107,102 @@ class MainWindow(SingletonClass): # Класс наследует поведен
     def user_input(self):
         '''Принимает и проверяет введенные пользователем данные и преобразует их в правильные типы.'''
         
-        # Проверка корректности N.
-        if not self.N.isdigit():
-            messagebox.showerror("Ошибка", "Количество точек N должно быть целым числом!")
-            self.btn1.config(relief='raised')  # Возвращаем relief в исходное состояние 'raised'
-            self.btn1.config(state='normal')  # Возвращаем state в исходное состояние 'normal'
-            return False
-        elif int(self.N) < 100:
-            messagebox.showerror("Ошибка", "Минимальное количество точек: 100!")
+        # Преобразуем все введенные данные в нужный вид + выполняем базовые проверки.
+        # Обработка a.
+        try:
+            self.a = int(self.a) # Пробуем перевести в целое число.
+        except ValueError:
+            try:
+                self.a = self.a.replace(",", ".") # Замена , на .
+                self.a = float(self.a) # Пробуем перевести в десятичное число.
+            except ValueError:
+                if isinstance(self.a, str): # Если a - строка, то ...
+                    if self.a.lower() in ["pi", "пи", "п", "p", "π"]: # Переводим все варианты в строчные буквы и сравниваем.
+                        self.a = np.pi
+                    elif self.a.lower() in ["inf", "∞", "бесконечность"]:
+                        self.a = np.inf
+                    else:
+                        messagebox.showerror("Ошибка", "Значение 'a' должно быть целым числом/десятичным числом/пи/бесконечностью.")
+                        self.btn1.config(relief='raised')
+                        self.btn1.config(state='normal')
+                        return False
+                else:
+                    messagebox.showerror("Ошибка", "Значение 'a' должно быть целым числом/десятичным числом/пи/бесконечностью.")
+                    self.btn1.config(relief='raised')
+                    self.btn1.config(state='normal')
+                    return False
+
+        # Обработка значения b.
+        try:
+            self.b = int(self.b)
+        except ValueError:
+            try:
+                self.b = self.b.replace(",", ".")
+                self.b = float(self.b)
+            except ValueError:
+                if isinstance(self.b, str):
+                    if self.b.lower() in ["pi", "пи", "п", "p", "π"]:
+                        self.b = np.pi
+                    elif self.b.lower() in ["inf", "∞", "бесконечность"]:
+                        self.b = np.inf
+                    else:
+                        messagebox.showerror("Ошибка", "Значение 'a' должно быть целым числом/десятичным числом/пи/бесконечностью.")
+                        self.btn1.config(relief='raised')
+                        self.btn1.config(state='normal')
+                        return False
+                else:
+                    messagebox.showerror("Ошибка", "Значение 'a' должно быть целым числом/десятичным числом/пи/бесконечностью.")
+                    self.btn1.config(relief='raised')
+                    self.btn1.config(state='normal')
+                    return False
+
+        # Обработка значения N.
+        try:
+            self.N = int(self.N)
+        except ValueError:
+            messagebox.showerror("Ошибка", "Значение 'N' должно быть целым числом.")
             self.btn1.config(relief='raised')
             self.btn1.config(state='normal')
             return False
-
-        # Проверка корректности a, b, N.
-        variable_names = []  # Инициализируем переменную пустым списком
-        try:
-            self.a = int(self.a)
-            self.b = int(self.b)
-            self.N = int(self.N)
-        except ValueError as e:
-            variables = {'a': self.a, 'b': self.b, 'N': self.N}
-            for var_name, var_value in variables.items():
-                try:
-                    int(var_value)
-                except ValueError:
-                    variable_names.append(var_name)
-            
-            error_message = f"Значение {' и '.join(variable_names)} должно быть целым числом!"
-            messagebox.showerror("Ошибка", error_message)
+        
+        # Проверка N < 100.
+        if self.N < 100:
+            messagebox.showerror("Ошибка", "Минимальное количество точек: 100!")
             self.btn1.config(relief='raised')
             self.btn1.config(state='normal')
             return False
         
         # Проверка корректности границ.
         if self.a >= self.b:
-            messagebox.showerror("Ошибка", "a должно быть меньше b!")
+            messagebox.showerror("Ошибка", "'a' должно быть меньше 'b'!")
             self.btn1.config(relief='raised')
             self.btn1.config(state='normal')
             return False
 
         # Проверка корректности func.
+        # Удаление пробелов.
+        self.func = self.func.replace(" ", "")
+        # Удаляем "y=".
+        self.func = self.func.replace("y=", "")
+        # Заменяем "^" на "**".
+        self.func = self.func.replace('^', '**')
+        # Объявляем func "анонимной" функцией через lambda.
+        self.func = "lambda x: " + self.func
+        
+        # Проверка синтаксиса func.
         try:
-            # Удаление "y=" и замена ^ на **
-            self.func = self.func.replace("y=", "")
-            self.func = self.func.replace('^', '**')
-            x = np.array([0])  # Произвольное значение для проверки синтаксиса
-            np.sin(x)
-            np.cos(x)
-            np.exp(x)
-            eval(self.func, {'__builtins__': None}, {'x': x, 'sin': np.sin, 'cos': np.cos, 'exp': np.exp})
-        except (SyntaxError, NameError):
-            messagebox.showerror("Ошибка", "введена неправильная функция!")
+            compile(self.func, "<string>", "exec")
+        except SyntaxError:
+            messagebox.showerror("Ошибка", "Функция написана некорректно!")
             self.btn1.config(relief='raised')
             self.btn1.config(state='normal')
             return False
 
-        # Проверка замкнутости графика.
-        x = np.linspace(self.a, self.b, 100)
+        # Проверка воспроизводимости func.
         try:
-            y = eval(self.func)
-        except NameError:
-            messagebox.showerror("Ошибка", "неправильно задана функция!")
-            self.btn1.config(relief='raised')
-            self.btn1.config(state='normal')
-            return False
-
-        fig, ax = plt.subplots()
-        ax.plot(x, y)
-
-        if plt.fignum_exists(fig.number):
-            plt.close(fig)  # Закрываем временный график
-        else:
-            messagebox.showerror("Ошибка", "область графика не замкнута!")
+            eval(self.func)
+        except:
+            messagebox.showerror("Ошибка", "Невозможно построить введенную вами функцию!")
             self.btn1.config(relief='raised')
             self.btn1.config(state='normal')
             return False
@@ -188,24 +214,24 @@ class MainWindow(SingletonClass): # Класс наследует поведен
     def plot(self):
         '''Строит график.'''
 
-        compiled_func = compile("lambda x: " + self.func, "<string>", "eval")
+        compiled_func = compile(self.func, "<string>", "eval")
         self.func = eval(compiled_func)
 
         x = np.linspace(self.a-10, self.b+10, 100)
         y = self.func(x)
 
-        fig, ax = plt.subplots()
+        self.fig, self.ax = plt.subplots()
 
         # Построение графика функции
-        ax.plot(x, y)
+        self.ax.plot(x, y)
 
         # Добавление условных границ интегрирования
-        ax.axvline(self.a, color='red', linestyle='dashed')
-        ax.axvline(self.b, color='red', linestyle='dashed')
+        self.ax.axvline(self.a, color='red', linestyle='dashed')
+        self.ax.axvline(self.b, color='red', linestyle='dashed')
 
         # Оси OX и OY
-        ax.axhline(0, color='black', linewidth=0.5)
-        ax.axvline(0, color='black', linewidth=0.5)
+        self.ax.axhline(0, color='black', linewidth=0.5)
+        self.ax.axvline(0, color='black', linewidth=0.5)
 
         # Добавление подписей осей и заголовка
         plt.xlabel('x')
@@ -226,20 +252,49 @@ class MainWindow(SingletonClass): # Класс наследует поведен
         '''Выполняет математические расчеты.'''
         
         dx = (self.b - self.a) / self.N  # Шаг интегрирования
-        x = np.linspace(self.a, self.b, self.N)  # Массив точек x
+        x = np.linspace(self.a, self.b, 100)  # Массив точек x
         y = self.func(x)  # Значения функции в точках x
 
         integral = np.sum(y) * dx  # Площадь под графиком (простая сумма)
-        print(integral)
+
+        # Создание случайных точек для визуализации
+        random_x = np.random.uniform(self.a, self.b, self.N)
+        random_y = self.func(random_x)
 
         # Визуализация точек и вывод результатов
-        mw.show_results(x, y, integral)
+        mw.show_results(x, y, integral, random_x, random_y)
 
 
 
-    def show_results(self):
+    def show_results(self, x, y, integral, random_x, random_y):
         '''Визуализирует точки и выводит непосредственный ответ.'''
-        pass
+        
+        self.fig, self.ax = plt.subplots()
+
+        # Построение графика функции
+        self.ax.plot(x, y)
+
+        # Отображение случайных точек
+        self.ax.scatter(random_x, random_y, color='red')
+
+        # Добавление условных границ интегрирования
+        self.ax.axvline(self.a, color='red', linestyle='dashed')
+        self.ax.axvline(self.b, color='red', linestyle='dashed')
+
+        # Оси OX и OY
+        self.ax.axhline(0, color='black', linewidth=0.5)
+        self.ax.axvline(0, color='black', linewidth=0.5)
+
+        # Добавление подписей осей и заголовка
+        plt.xlabel('x')
+        plt.ylabel('y')
+        plt.title('График функции с случайными точками')
+
+        # Отображение графика
+        plt.show()
+
+        # Вывод результатов
+        messagebox.showinfo("Определенный интеграл вашей функции:", integral)
 
 
 
