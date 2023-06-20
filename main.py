@@ -1,8 +1,9 @@
-import tkinter as tk # GUI
-import matplotlib.pyplot as plt # График.
-import numpy as np # Математика для графика.
+import tkinter as tk # GUI.
+import matplotlib.pyplot as plt # Построение графиков.
+import numpy as np # Математика.
+from sympy import * # Математика доп.
 from tkinter import messagebox # Вывод ошибок.
-from singleton import SingletonClass # Паттерн для создания лишь одного главного окна.
+from singleton import SingletonClass # Паттерн для создания лишь одного главного окна (защита от дублей).
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg # Модуль matplotlib для встраивания графиков в интерфейс Tkinter.
 
 class MainWindow(SingletonClass): # Класс наследует поведение Singleton, чтобы был лишь один экземпляр главного окна.
@@ -26,7 +27,7 @@ class MainWindow(SingletonClass): # Класс наследует поведен
         root = self.root # Не особо хорошая практика, но очень лень везде писать self.
         root = tk.Tk() # Создаем главное окно root.
 
-        frame = tk.Frame(root, width=400, height=300, bg='#EDEDED') # Отдельное место под график.
+        frame = tk.Frame(root, width=400, height=300, bg='#EDEDED') # Отдельное место под график цвета фона.
         frame.grid(column=5, row=1, columnspan=3, rowspan=9, padx=30)
 
         root.title('Численное интегрирование функции методом Монте-Карло') # Меняем название окна в самом верху.
@@ -109,7 +110,7 @@ class MainWindow(SingletonClass): # Класс наследует поведен
 
 
     def user_input(self):
-        '''Принимает и проверяет введенные пользователем данные и преобразует их в правильные типы.'''
+        '''Принимает и проверяет введенные пользователем данные и преобразует их в правильные форматы.'''
         
         # Преобразуем все введенные данные в нужный вид + выполняем базовые проверки.
         # Обработка a.
@@ -210,6 +211,8 @@ class MainWindow(SingletonClass): # Класс наследует поведен
             self.func = self.func.replace("pi", "np.pi")
         elif "e" in self.func:
             self.func = self.func.replace("e", "np.e")
+        elif "sqrt" in self.func:
+            self.func = self.func.replace("sqrt", "np.sqrt")
 
         # Объявляем func "анонимной" функцией через lambda.
         self.func = "lambda x: " + self.func
@@ -267,6 +270,10 @@ class MainWindow(SingletonClass): # Класс наследует поведен
         ax.set_ylabel('y')
         ax.set_title('График функции')
 
+        ax.set_xlim(-10, 10)
+        ax.set_ylim(-100, 100)
+
+
         canvas.draw()
 
         self.btn1.config(relief='raised')
@@ -280,6 +287,37 @@ class MainWindow(SingletonClass): # Класс наследует поведен
     def math_calculations(self):
         '''Выполняет математические расчеты.'''
         
+        # Узнаем максимум и минимум функции на отрезке.
+
+        x = np.linspace(self.a, self.b, 100)
+        y = np.vectorize(self.func)(x)
+        max_y = np.amax(y)
+        min_y = np.amin(y)
+
+        # Генерируем N пар точек x и y через numpy.random.uniform()
+        
+        random_x = np.random.uniform(self.a, self.b, self.N)
+        if max_y > 0:
+            random_y = np.random.uniform(0, max_y, self.N)
+        elif max_y <= 0:
+            random_y = np.random.uniform(0, min_y, self.N)
+
+        # Определяем количество точек, которые находятся под графиком, сравнивая y-координату каждой точки с соответствующим значением функции.
+        
+        K = sum(random_y[i] <= self.func(random_x[i]) for i in range(self.N))
+
+        # Вычислим площадь, ограниченную графиком функции и координатными осями.
+        
+        if max_y > 0:
+            S_rectangle = (self.b - self.a) * self.func(max_y)
+        if max_y <= 0:
+            S_rectangle = (self.b - self.a) * self.func(min_y)
+        integral = S_rectangle * (K / self.N)
+
+        # Визуализация точек и вывод результатов
+        mw.show_results(random_x, random_y, integral)
+
+        '''
         # Генерируем N пар точек x и y через numpy.random.uniform()
         random_x = np.random.uniform(self.a, self.b, self.N)
         random_y = []
@@ -291,48 +329,51 @@ class MainWindow(SingletonClass): # Класс наследует поведен
 
         # Умножим среднее значение на ширину интервала интегрирования (b - a), чтобы получить приблизительное значение интеграла.
         integral = (self.b - self.a) * y_mean
-
-        # Визуализация точек и вывод результатов
-        mw.show_results(random_x, random_y, integral)
-
+        '''
 
 
     def show_results(self, random_x, random_y, integral):
         '''Визуализирует точки и выводит непосредственный ответ.'''
         
-        text5 = tk.Label(self.root, text=f'Ответ: {integral}',
-                            bg='#EDEDED',
-                            font=('Corbel', 20))
-        text5.grid(row=15,column=5,stick='s',pady=30)
-        '''
-        self.fig, self.ax = plt.subplots()
+        if hasattr(self, 'figure') and hasattr(self, 'ax'):
+            self.ax.clear()
+        else:
+            self.figure, self.ax = plt.subplots(figsize=(4.3, 4))
 
-        # Построение графика функции
+        x = np.linspace(self.a - 10, self.b + 10, 100)
+        y = self.func(x)
         self.ax.plot(x, y)
 
-        # Отображение случайных точек
-        self.ax.scatter(random_x, random_y, color='red')
+        is_under_graph = random_y <= self.func(random_x)
 
-        # Добавление условных границ интегрирования
+        self.ax.scatter(random_x, random_y, c=np.where(is_under_graph, 'green', 'red'), marker='o', s=5)
+
+        self.ax.set_xlabel('x')
+        self.ax.set_ylabel('y')
+        self.ax.set_title('График функции с точками')
+
         self.ax.axvline(self.a, color='red', linestyle='dashed')
         self.ax.axvline(self.b, color='red', linestyle='dashed')
 
-        # Оси OX и OY
         self.ax.axhline(0, color='black', linewidth=0.5)
         self.ax.axvline(0, color='black', linewidth=0.5)
 
-        # Добавление подписей осей и заголовка
-        plt.xlabel('x')
-        plt.ylabel('y')
-        plt.title('График функции с случайными точками')
+        if hasattr(self, 'canvas'):
+            self.canvas.get_tk_widget().destroy()
 
-        # Отображение графика
-        plt.show()
+        self.canvas = FigureCanvasTkAgg(self.figure, self.root)
+        self.canvas.get_tk_widget().grid(column=5, row=1, columnspan=3, rowspan=9, padx=20)
+        self.canvas.draw()
 
-        # Вывод результатов
-        messagebox.showinfo("Определенный интеграл вашей функции:", integral)
-        '''
+        if hasattr(self, 'text5'):
+            self.text5.destroy()
 
+        self.text5 = tk.Label(self.root, text=f'Ответ: {integral}',
+                            bg='#EDEDED',
+                            font=('Corbel', 20))
+        self.text5.grid(row=15,column=5,stick='s',pady=30)
+
+        
 
 if __name__ == "__main__":
     mw = MainWindow() # Создаем объект класса MainWindow.
