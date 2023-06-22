@@ -349,10 +349,10 @@ class MainWindow(SingletonClass): # Класс наследует поведен
 
         # Определяем интеграл через integral = s_rectangle * dots_inside
         
-        if min_y > 0:
+        if min_y >= 0:
             s_g = s_uprectangle * count_g / (count_g + count_r)
             integral = s_g
-        elif max_y <= 0:
+        elif max_y < 0:
             s_b = s_downrectangle * count_b / (count_b + count_y)
             integral = s_b
         else:
