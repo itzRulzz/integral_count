@@ -1,2 +1,6 @@
 .venv
 content
+main.spec
+dist
+build
+__pycache__

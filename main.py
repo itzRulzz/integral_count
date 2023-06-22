@@ -6,6 +6,10 @@ from tkinter import messagebox # Вывод ошибок.
 from singleton import SingletonClass # Паттерн для создания лишь одного главного окна (защита от дублей).
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg # Модуль matplotlib для встраивания графиков в интерфейс Tkinter.
 import re
+import os
+import sys
+
+
 
 class MainWindow(SingletonClass): # Класс наследует поведение Singleton, чтобы был лишь один экземпляр главного окна.
     '''Хранит все основные переменные в атрибутах объекта.'''
@@ -35,7 +39,16 @@ class MainWindow(SingletonClass): # Класс наследует поведен
         root.geometry('1000x600+320+180') # Изменяем размер окна и его положение относительно левого верхнего угла.
         root.resizable(False, False) # Запрещаем менять размеры окна.
 
-        logo = tk.PhotoImage(file='content\logo.png') # Создаем переменную для логотипа.
+        def resource_path(relative_path):
+            try:
+                base_path = sys._MEIPASS
+            except AttributeError:
+                base_path = os.path.abspath(".")
+
+            return os.path.join(base_path, relative_path)
+
+        logo_path = resource_path("content/logo.png")
+        logo = tk.PhotoImage(file=logo_path) # Создаем переменную для логотипа.
         root.iconphoto(False, logo) # Присваиваем новый логотип окну.
 
         root.config(bg='#EDEDED') # Меняем цвет фона окна.
@@ -105,6 +118,11 @@ class MainWindow(SingletonClass): # Класс наследует поведен
         root.grid_rowconfigure(1, minsize=30)
         root.grid_rowconfigure(3, minsize=30)
         root.grid_rowconfigure(5, minsize=30)
+
+        def on_close():
+            root.destroy()
+        
+        root.protocol("WM_DELETE_WINDOW", on_close)
 
         root.mainloop() # Вечный цикл, в течении которого окно будет запущено.
 
@@ -331,10 +349,10 @@ class MainWindow(SingletonClass): # Класс наследует поведен
 
         # Определяем интеграл через integral = s_rectangle * dots_inside
         
-        if min_y >= 0:
+        if min_y > 0:
             s_g = s_uprectangle * count_g / (count_g + count_r)
             integral = s_g
-        elif max_y < 0:
+        elif max_y <= 0:
             s_b = s_downrectangle * count_b / (count_b + count_y)
             integral = s_b
         else:
@@ -345,6 +363,8 @@ class MainWindow(SingletonClass): # Класс наследует поведен
         # Визуализация точек и вывод результатов.
 
         mw.show_results(random_x, random_y, integral, max_y, min_y)
+
+
 
     def show_results(self, random_x, random_y, integral, max_y, min_y):
         '''Визуализирует точки и выводит непосредственный ответ.'''
@@ -358,10 +378,12 @@ class MainWindow(SingletonClass): # Класс наследует поведен
         y = self.func(x)
         self.ax.plot(x, y)
 
-        if max_y > 0:
-            is_under_graph = random_y <= self.func(random_x)
+        if min_y >= 0:
+            is_under_graph = random_y < self.func(random_x)
+        elif max_y < 0:
+            is_under_graph = random_y > self.func(random_x)
         else:
-            is_under_graph = random_y >= self.func(random_x)
+             is_under_graph = np.logical_or(np.logical_and(random_y < self.func(random_x), random_y >= 0), np.logical_and(random_y > self.func(random_x), random_y < 0))
 
         self.ax.scatter(random_x, random_y, c=np.where(is_under_graph, 'green', 'red'), marker='o', s=5)
 
