@@ -5,6 +5,7 @@ from sympy import * # Математика доп.
 from tkinter import messagebox # Вывод ошибок.
 from singleton import SingletonClass # Паттерн для создания лишь одного главного окна (защита от дублей).
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg # Модуль matplotlib для встраивания графиков в интерфейс Tkinter.
+import re
 
 class MainWindow(SingletonClass): # Класс наследует поведение Singleton, чтобы был лишь один экземпляр главного окна.
     '''Хранит все основные переменные в атрибутах объекта.'''
@@ -191,28 +192,17 @@ class MainWindow(SingletonClass): # Класс наследует поведен
         self.func = self.func.replace("y=", "")
         # Заменяем "^" на "**".
         self.func = self.func.replace('^', '**')
+        # Заменяем "," на ".".
+        self.func = self.func.replace(",", ".")
         
         # Объявляем спец. триганометрические функции через numpy.
-        if "sin" in self.func:
-            self.func = self.func.replace("sin", "np.sin")
-        elif "cos" in self.func:
-            self.func = self.func.replace("cos", "np.cos")
-        elif "tan" in self.func:
-            self.func = self.func.replace("tan", "np.tan")
-        elif "arcsin" in self.func:
-            self.func = self.func.replace("arcsin", "np.arcsin")
-        elif "arccos" in self.func:
-            self.func = self.func.replace("arccos", "np.arccos")
-        elif "arctan" in self.func:
-            self.func = self.func.replace("arctan", "np.arctan")
-        elif "exp" in self.func:
-            self.func = self.func.replace("exp", "np.exp")
-        elif "pi" in self.func:
-            self.func = self.func.replace("pi", "np.pi")
-        elif "e" in self.func:
-            self.func = self.func.replace("e", "np.e")
-        elif "sqrt" in self.func:
-            self.func = self.func.replace("sqrt", "np.sqrt")
+        self.func = re.sub(r'\bsin\b', 'np.sin', self.func)
+        self.func = re.sub(r'\bcos\b', 'np.cos', self.func)
+        self.func = re.sub(r'\btan\b', 'np.tan', self.func)
+        self.func = re.sub(r'\bexp\b', 'np.exp', self.func)
+        self.func = re.sub(r'\bpi\b', 'np.pi', self.func)
+        self.func = re.sub(r'\bsqrt\b', 'np.sqrt', self.func)
+        self.func = re.sub(r'\be\b', 'np.e', self.func)
 
         # Объявляем func "анонимной" функцией через lambda.
         self.func = "lambda x: " + self.func
@@ -288,51 +278,75 @@ class MainWindow(SingletonClass): # Класс наследует поведен
         '''Выполняет математические расчеты.'''
         
         # Узнаем максимум и минимум функции на отрезке.
-
+        
         x = np.linspace(self.a, self.b, 100)
         y = np.vectorize(self.func)(x)
         max_y = np.amax(y)
         min_y = np.amin(y)
 
-        # Генерируем N пар точек x и y через numpy.random.uniform()
-        
+        # Генерируем случайные X от a до b.
+
         random_x = np.random.uniform(self.a, self.b, self.N)
-        if max_y > 0:
+
+        # Генерируем случайные Y от min_y до max_y.
+
+        if min_y >= 0:
             random_y = np.random.uniform(0, max_y, self.N)
-        elif max_y <= 0:
-            random_y = np.random.uniform(0, min_y, self.N)
+        elif max_y < 0:
+            random_y = np.random.uniform(min_y, 0, self.N)
+        else:
+            random_y = np.random.uniform(min_y, max_y, self.N)
 
-        # Определяем количество точек, которые находятся под графиком, сравнивая y-координату каждой точки с соответствующим значением функции.
+        # Считаем значение функции для каждого из сгенерированных x-ов.
+
+        random_xy = []
+        for i in random_x:
+            random_xy.append(self.func(i))
+
+        # Определяем положение точек, разбивая их на группы и высчитываем долю точек внутри нужных областей. Если max_y > 0: если random_y[i] в random_x[i] меньше или равно random_xy[i], то внутри.
         
-        K = sum(random_y[i] <= self.func(random_x[i]) for i in range(self.N))
+        count_g = 0
+        count_r = 0
+        count_b = 0
+        count_y = 0
 
-        # Вычислим площадь, ограниченную графиком функции и координатными осями.
+        # Группа 1 (внутри выше 0).
+        for i in range(self.N):
+            if random_y[i] >= 0 and random_y[i] < random_xy[i]:
+                count_g += 1
+        # Группа 2 (внутри ниже 0).
+            if random_y[i] < 0 and random_y[i] > random_xy[i]:
+                count_b += 1
+        # Группа 3 (снаружи выше 0).
+            if random_y[i] >= 0 and random_y[i] > random_xy[i]:
+                count_r += 1
+        # Группа 4 (снаружи ниже 0).
+            if random_y[i] < 0 and random_y[i] < random_xy[i]:
+                count_y += 1
+
+        # Рассчитываем площадь прямоугольника, получившегося из пределов a - b и OX - y_min/y_max. S_прямоугольника = (x_max-x_min) * (y_max-0 ИЛИ 0-y_min).
         
-        if max_y > 0:
-            S_rectangle = (self.b - self.a) * self.func(max_y)
-        if max_y <= 0:
-            S_rectangle = (self.b - self.a) * self.func(min_y)
-        integral = S_rectangle * (K / self.N)
+        s_uprectangle = (self.b - self.a) * (max_y - 0)
+        s_downrectangle = (self.b - self.a) * (min_y - 0)
 
-        # Визуализация точек и вывод результатов
-        mw.show_results(random_x, random_y, integral)
+        # Определяем интеграл через integral = s_rectangle * dots_inside
+        
+        if min_y >= 0:
+            s_g = s_uprectangle * count_g / (count_g + count_r)
+            integral = s_g
+        elif max_y < 0:
+            s_b = s_downrectangle * count_b / (count_b + count_y)
+            integral = s_b
+        else:
+            s_g = s_uprectangle * count_g / (count_g + count_r)
+            s_b = s_downrectangle * count_b / (count_b + count_y)
+            integral = s_g + s_b
 
-        '''
-        # Генерируем N пар точек x и y через numpy.random.uniform()
-        random_x = np.random.uniform(self.a, self.b, self.N)
-        random_y = []
-        for i in range(len(random_x)):
-            random_y.append(self.func(random_x[i]))
+        # Визуализация точек и вывод результатов.
 
-        # Вычисляем среднее значение значений функции, суммируя их и деля на N.
-        y_mean = np.sum(random_y) / self.N
+        mw.show_results(random_x, random_y, integral, max_y, min_y)
 
-        # Умножим среднее значение на ширину интервала интегрирования (b - a), чтобы получить приблизительное значение интеграла.
-        integral = (self.b - self.a) * y_mean
-        '''
-
-
-    def show_results(self, random_x, random_y, integral):
+    def show_results(self, random_x, random_y, integral, max_y, min_y):
         '''Визуализирует точки и выводит непосредственный ответ.'''
         
         if hasattr(self, 'figure') and hasattr(self, 'ax'):
@@ -344,7 +358,10 @@ class MainWindow(SingletonClass): # Класс наследует поведен
         y = self.func(x)
         self.ax.plot(x, y)
 
-        is_under_graph = random_y <= self.func(random_x)
+        if max_y > 0:
+            is_under_graph = random_y <= self.func(random_x)
+        else:
+            is_under_graph = random_y >= self.func(random_x)
 
         self.ax.scatter(random_x, random_y, c=np.where(is_under_graph, 'green', 'red'), marker='o', s=5)
 
